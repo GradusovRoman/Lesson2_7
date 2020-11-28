@@ -1,5 +1,7 @@
 package geekbrains.lesson2_7gb.Server;
 
+import geekbrains.lesson2_7gb.entity.User;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -9,17 +11,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientHandler {
 
-    private final String exitMessage = "-exit";
-    private final String privateMessage = "/w";
-    private final String authMessage = "-auth";
-    private final int timeout = 4000;
+    private static final String exitMessage = "-exit";
+    private static final String privateMessage = "/w";
+    private static final String authMessage = "-auth";
+    private static final String changeNameMessage = "/cn";
 
 
     private Server server;
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
-    private String name;
+    private User user;
 
     public ClientHandler(Server server, Socket socket) {
         try {
@@ -27,14 +29,17 @@ public class ClientHandler {
             this.socket = socket;
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
+
             doListen();
         } catch (IOException e) {
             throw new RuntimeException("SWW", e);
         }
     }
+
     public String getName() {
-        return name;
+        return user.getNickname();
     }
+
     private void doListen() {
         new Thread(() -> {
             try {
@@ -52,6 +57,7 @@ public class ClientHandler {
         AtomicBoolean isAuthSucceed = new AtomicBoolean(false);
 
         try {
+
             while (!isAuthSucceed.get()) {
 
                 String credentials = in.readUTF();
@@ -71,8 +77,8 @@ public class ClientHandler {
                                     user -> {
                                         if (!server.isLoggedIn(user.getNickname())) {
                                             sendMessage("cmd auth: Status OK");
-                                            name = user.getNickname();
-                                            server.broadcastMessage(name + " is logged in.", name);
+                                            this.user = user;
+                                            server.broadcastMessage(user.getNickname() + " is logged in.", user.getNickname());
                                             server.subscribe(this);
                                             isAuthSucceed.set(true);
                                         } else {
@@ -93,9 +99,9 @@ public class ClientHandler {
         }
     }
 
-/**
- * Receives input data from {@link ClientHandler#in} and then broadcast via {@link Server#broadcastMessage(String, String)}
- */
+    /**
+     * Receives input data from {@link ClientHandler#in} and then broadcast via {@link Server#broadcastMessage(String, String)}
+     */
 
 
 // Варианты для 3го задания:
@@ -118,26 +124,35 @@ public class ClientHandler {
 //
 //   обработка таймаута ...пока на подумать.
 
-
-
-
-private void receiveMessage() {
-    try {
-        while (true) {
-            String message = in.readUTF();
-            if (message.equals(exitMessage)) {
-                return;
+    private void receiveMessage() {
+        try {
+            while (true) {
+                String message = in.readUTF();
+                if (message.equals(exitMessage)) {
+                    return;
+                }
+                if (message.startsWith(privateMessage)) {
+                    server.sendPrivateMessage(message, user.getNickname());
+                } else {
+                    server.broadcastMessage(message, user.getNickname());
+                }
+                if (message.startsWith(changeNameMessage)) {
+                    changeName(message);
+                }
             }
-            if (message.startsWith(privateMessage)) {
-                server.sendPrivateMessage(message, name);
-            } else {
-                server.broadcastMessage(message, name);
-            }
+        } catch (IOException e) {
+            throw new RuntimeException("SWW", e);
         }
-    } catch (IOException e) {
-        throw new RuntimeException("SWW", e);
     }
-}
+
+    private void changeName(String message) {
+        String[] messageValues = message.split("\\s");
+        if (messageValues.length > 1) {
+            server.getUserService().changeName(user, messageValues[1]);
+            user.setNickname(messageValues[1]);
+        }
+    }
+
     public void sendMessage(String message) {
         try {
             out.writeUTF(message);
@@ -145,6 +160,7 @@ private void receiveMessage() {
             throw new RuntimeException("SWW", e);
         }
     }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -154,10 +170,11 @@ private void receiveMessage() {
                 Objects.equals(socket, that.socket) &&
                 Objects.equals(in, that.in) &&
                 Objects.equals(out, that.out) &&
-                Objects.equals(name, that.name);
+                Objects.equals(user.getNickname(), user.getNickname());
     }
+
     @Override
     public int hashCode() {
-        return Objects.hash(server, socket, in, out, name);
+        return Objects.hash(server, socket, in, out, user.getNickname());
     }
 }
