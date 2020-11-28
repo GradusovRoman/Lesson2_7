@@ -5,7 +5,6 @@ public class User {
     private String email;
     private String password;
 
-
     public User(String nickname, String email, String password) {
         this.nickname = nickname;
         this.email = email;
@@ -22,5 +21,9 @@ public class User {
 
     public String getPassword() {
         return password;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
     }
 }
