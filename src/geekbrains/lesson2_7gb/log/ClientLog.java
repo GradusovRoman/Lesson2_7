@@ -1,18 +1,17 @@
 package geekbrains.lesson2_7gb.log;
 
-import geekbrains.lesson2_7gb.log.Logger;
-
 import java.io.*;
 import java.net.Socket;
 
 
-public class Client {
+
+public class ClientLog {
     private static final int logShowLimit = 100;
     private String serverHost;
     private int serverPort;
     private Logger logger;
 
-    public Client(String serverHost, int serverPort, Logger logger) {
+    public ClientLog(String serverHost, int serverPort, Logger logger) {
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.logger = logger;
